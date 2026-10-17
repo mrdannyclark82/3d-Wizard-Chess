@@ -1,0 +1,38 @@
+{
+  "packageId": "com.sanctum.wizardchess",
+  "host": "mrdannyclark82.github.io",
+  "name": "Wizard Chess 3D",
+  "launcherName": "WizardChess",
+  "display": "standalone",
+  "themeColor": "#080a0f",
+  "themeColorDark": "#080a0f",
+  "navigationColor": "#080a0f",
+  "navigationColorDark": "#080a0f",
+  "backgroundColor": "#080a0f",
+  "enableNotifications": false,
+  "startUrl": "/3d-Wizard-Chess/",
+  "iconUrl": "https://mrdannyclark82.github.io/3d-Wizard-Chess/pwa-512x512.png",
+  "maskableIconUrl": "https://mrdannyclark82.github.io/3d-Wizard-Chess/pwa-maskable-512x512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "android"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://mrdannyclark82.github.io/3d-Wizard-Chess/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "orientation": "any",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "fullScopeUrl": "https://mrdannyclark82.github.io/3d-Wizard-Chess/",
+  "minSdkVersion": 21
+}
