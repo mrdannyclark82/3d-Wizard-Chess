@@ -17,6 +17,10 @@
     "android:build": "npm run build && npx cap sync"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capgo/native-purchases": "^8.9.6",
     "@google/genai": "^2.4.0",
     "@vitejs/plugin-react": "^6.1.1",
     "react": "^19.0.1",

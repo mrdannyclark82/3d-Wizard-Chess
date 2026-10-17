@@ -104,8 +104,25 @@ export function initWizardChess() {
       scene.environmentIntensity = 0.24;
     }
 
-    const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.22, 65);
+    const BASE_FOV = 40;
+    const camera = new THREE.PerspectiveCamera(BASE_FOV, window.innerWidth / window.innerHeight, 0.22, 65);
     camera.position.set(0, 2.22, 2.72);
+
+    function updateCameraAspectAndFov() {
+      const aspect = window.innerWidth / window.innerHeight;
+      camera.aspect = aspect;
+      if (aspect < 1) {
+        // In portrait orientation (mobile phones), adjust vertical FOV so horizontal field of view
+        // remains wide enough for the entire 8x8 board and cathedral visuals without clipping
+        const targetHFovRad = 2 * Math.atan(Math.tan((BASE_FOV * Math.PI) / 360) * 1.32);
+        const vFovRad = 2 * Math.atan(Math.tan(targetHFovRad / 2) / aspect);
+        camera.fov = Math.min((vFovRad * 180) / Math.PI, 62);
+      } else {
+        camera.fov = BASE_FOV;
+      }
+      camera.updateProjectionMatrix();
+    }
+    updateCameraAspectAndFov();
 
     const orbitControls = new OrbitControls(camera, renderer.domElement);
     orbitControls.enableDamping = true;
@@ -115,6 +132,13 @@ export function initWizardChess() {
     orbitControls.minDistance = 0.95;
     orbitControls.maxDistance = 36.0;
     orbitControls.target.set(0, 0.85, -0.15);
+    orbitControls.rotateSpeed = 0.85;
+    orbitControls.zoomSpeed = 1.1;
+    orbitControls.panSpeed = 0.9;
+    orbitControls.touches = {
+      ONE: THREE.TOUCH.ROTATE,
+      TWO: THREE.TOUCH.DOLLY_PAN
+    };
     orbitControls.update();
 
     // =========================================================================
@@ -865,6 +889,152 @@ export function initWizardChess() {
       emissiveIntensity: 0.25
     });
 
+    const lightSqMat = new THREE.MeshStandardMaterial({
+      color: 0xdcd3c2,
+      roughness: 0.38,
+      metalness: 0.06
+    });
+
+    const darkSqMat = new THREE.MeshStandardMaterial({
+      color: 0x14171f,
+      roughness: 0.28,
+      metalness: 0.18
+    });
+
+    // =========================================================================
+    // Dynamic 3D Cosmetic Themes (Scenes, Piece Sets, Board Materials)
+    // =========================================================================
+    const SCENE_THEMES = {
+      cathedral: {
+        background: 0x070a12,
+        fogColor: 0x080b14,
+        fogDensity: 0.015,
+        envIntensity: 0.24,
+        panelColors: [0xdce6f7, 0xffe0b5, 0xd4deee, 0xd4deee, 0xff9438, 0xff9438, 0x6e5c49]
+      },
+      volcanic: {
+        background: 0x180402,
+        fogColor: 0x1f0603,
+        fogDensity: 0.022,
+        envIntensity: 0.45,
+        panelColors: [0xff4500, 0xff2200, 0x8b0000, 0x8b0000, 0xff6600, 0xff3300, 0x220502]
+      },
+      celestial: {
+        background: 0x020617,
+        fogColor: 0x030822,
+        fogDensity: 0.012,
+        envIntensity: 0.38,
+        panelColors: [0x38bdf8, 0x818cf8, 0x1e1b4b, 0x1e1b4b, 0x06b6d4, 0x3b82f6, 0x0f172a]
+      }
+    };
+
+    function setCustomSceneTheme(themeKey) {
+      const theme = SCENE_THEMES[themeKey] || SCENE_THEMES.cathedral;
+      scene.background.setHex(theme.background);
+      if (scene.fog) {
+        scene.fog.color.setHex(theme.fogColor);
+        scene.fog.density = theme.fogDensity;
+      }
+      if ('environmentIntensity' in scene) {
+        scene.environmentIntensity = theme.envIntensity;
+      }
+      const pmremGen = new THREE.PMREMGenerator(renderer);
+      pmremGen.compileEquirectangularShader();
+      const envScene = new THREE.Scene();
+      envScene.background = new THREE.Color(theme.background);
+      const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+      const addPanel = (colorHex, intensity, pos, scl) => {
+        const mat = new THREE.MeshBasicMaterial({
+          color: new THREE.Color(colorHex).multiplyScalar(intensity)
+        });
+        const m = new THREE.Mesh(boxGeo, mat);
+        m.position.fromArray(pos);
+        m.scale.fromArray(scl);
+        envScene.add(m);
+      };
+      const colors = theme.panelColors;
+      addPanel(colors[0], 2.4, [0, 9.5, -12.0], [10.0, 2.0, 1.5]);
+      addPanel(colors[1], 2.2, [0, 9.5, 12.0], [10.0, 2.0, 1.5]);
+      addPanel(colors[2], 1.8, [-9.0, 6.5, 0.0], [1.2, 4.5, 16.0]);
+      addPanel(colors[3], 1.8, [9.0, 6.5, 0.0], [1.2, 4.5, 16.0]);
+      addPanel(colors[4], 3.2, [-4.5, 1.6, 0.0], [2.2, 2.2, 4.0]);
+      addPanel(colors[5], 3.2, [4.5, 1.6, 0.0], [2.2, 2.2, 4.0]);
+      addPanel(colors[6], 0.9, [0, -4.0, 0.0], [16.0, 1.0, 24.0]);
+
+      const envTex = pmremGen.fromScene(envScene, 0.04).texture;
+      if (scene.environment) scene.environment.dispose();
+      scene.environment = envTex;
+      boxGeo.dispose();
+      pmremGen.dispose();
+      renderer.render(scene, camera);
+    }
+
+    const PIECE_THEMES = {
+      classic: {
+        white: { color: 0xe6dfd0, roughness: 0.34, metalness: 0.06, emissive: 0x000000, emissiveIntensity: 0 },
+        black: { color: 0x222630, roughness: 0.28, metalness: 0.24, emissive: 0x000000, emissiveIntensity: 0 }
+      },
+      gold_obsidian: {
+        white: { color: 0xffd700, roughness: 0.18, metalness: 0.95, emissive: 0x332600, emissiveIntensity: 0.2 },
+        black: { color: 0x0a0c10, roughness: 0.08, metalness: 0.85, emissive: 0x000000, emissiveIntensity: 0 }
+      },
+      stained_glass: {
+        white: { color: 0x38bdf8, roughness: 0.12, metalness: 0.1, emissive: 0x0284c7, emissiveIntensity: 0.4 },
+        black: { color: 0xf43f5e, roughness: 0.12, metalness: 0.1, emissive: 0xbe123c, emissiveIntensity: 0.4 }
+      }
+    };
+
+    function setPieceMaterialTheme(themeKey) {
+      const theme = PIECE_THEMES[themeKey] || PIECE_THEMES.classic;
+      whitePieceMat.color.setHex(theme.white.color);
+      whitePieceMat.roughness = theme.white.roughness;
+      whitePieceMat.metalness = theme.white.metalness;
+      whitePieceMat.emissive.setHex(theme.white.emissive);
+      whitePieceMat.emissiveIntensity = theme.white.emissiveIntensity;
+      whitePieceMat.needsUpdate = true;
+
+      blackPieceMat.color.setHex(theme.black.color);
+      blackPieceMat.roughness = theme.black.roughness;
+      blackPieceMat.metalness = theme.black.metalness;
+      blackPieceMat.emissive.setHex(theme.black.emissive);
+      blackPieceMat.emissiveIntensity = theme.black.emissiveIntensity;
+      blackPieceMat.needsUpdate = true;
+      renderer.render(scene, camera);
+    }
+
+    const BOARD_THEMES = {
+      classic: {
+        light: { color: 0xdcd3c2, roughness: 0.38, metalness: 0.06, emissive: 0x000000, emissiveIntensity: 0 },
+        dark: { color: 0x14171f, roughness: 0.28, metalness: 0.18, emissive: 0x000000, emissiveIntensity: 0 }
+      },
+      marble: {
+        light: { color: 0xf8fafc, roughness: 0.14, metalness: 0.12, emissive: 0x000000, emissiveIntensity: 0 },
+        dark: { color: 0x0f172a, roughness: 0.10, metalness: 0.35, emissive: 0x000000, emissiveIntensity: 0 }
+      },
+      lava_stone: {
+        light: { color: 0xf97316, roughness: 0.45, metalness: 0.15, emissive: 0x7c2d12, emissiveIntensity: 0.3 },
+        dark: { color: 0x1c1917, roughness: 0.25, metalness: 0.50, emissive: 0x000000, emissiveIntensity: 0 }
+      }
+    };
+
+    function setBoardMaterialTheme(themeKey) {
+      const theme = BOARD_THEMES[themeKey] || BOARD_THEMES.classic;
+      lightSqMat.color.setHex(theme.light.color);
+      lightSqMat.roughness = theme.light.roughness;
+      lightSqMat.metalness = theme.light.metalness;
+      if (theme.light.emissive !== undefined) lightSqMat.emissive.setHex(theme.light.emissive);
+      if (theme.light.emissiveIntensity !== undefined) lightSqMat.emissiveIntensity = theme.light.emissiveIntensity;
+      lightSqMat.needsUpdate = true;
+
+      darkSqMat.color.setHex(theme.dark.color);
+      darkSqMat.roughness = theme.dark.roughness;
+      darkSqMat.metalness = theme.dark.metalness;
+      if (theme.dark.emissive !== undefined) darkSqMat.emissive.setHex(theme.dark.emissive);
+      if (theme.dark.emissiveIntensity !== undefined) darkSqMat.emissiveIntensity = theme.dark.emissiveIntensity;
+      darkSqMat.needsUpdate = true;
+      renderer.render(scene, camera);
+    }
+
     // =========================================================================
     // Asset Loading (Cathedral GLB + 12 Rigged Piece GLBs)
     // =========================================================================
@@ -883,16 +1053,6 @@ export function initWizardChess() {
     function buildChessBoardGrid() {
       const tileH = 0.036;
       const sqGeo = new THREE.BoxGeometry(BOARD_SQ_SIZE * 0.985, tileH, BOARD_SQ_SIZE * 0.985);
-      const lightSqMat = new THREE.MeshStandardMaterial({
-        color: 0xdcd3c2,
-        roughness: 0.38,
-        metalness: 0.06
-      });
-      const darkSqMat = new THREE.MeshStandardMaterial({
-        color: 0x14171f,
-        roughness: 0.28,
-        metalness: 0.18
-      });
 
       for (let r = 0; r < 8; r++) {
         for (let c = 0; c < 8; c++) {
@@ -4437,6 +4597,12 @@ export function initWizardChess() {
       prevFloorStoneLook,
       WALL_STONE_LOOKS,
       FLOOR_STONE_LOOKS,
+      setCustomSceneTheme,
+      setPieceMaterialTheme,
+      setBoardMaterialTheme,
+      SCENE_THEMES,
+      PIECE_THEMES,
+      BOARD_THEMES,
       holdCameraKey: (code, down = true) => {
         if (down) heldCameraKeys.add(code);
         else heldCameraKeys.delete(code);
@@ -4944,8 +5110,7 @@ export function initWizardChess() {
     }
 
     window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
+      updateCameraAspectAndFov();
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
