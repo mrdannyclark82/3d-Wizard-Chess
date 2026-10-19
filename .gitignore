@@ -13,6 +13,12 @@ dev-dist/
 *.keystore
 *.jks
 keystore.properties
+play-service-account.json
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!capacitor.config.json
 
 # Android Build Outputs
 android/.gradle/
