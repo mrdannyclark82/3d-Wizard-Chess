@@ -46,7 +46,7 @@ What's New in This Release:
 
 ## 📦 Build Technical Details
 - **Package ID:** `com.sanctum.wizardchess`
-- **Version Name:** `1.0`
-- **Version Code:** `1`
+- **Version Name:** `1.0.1`
+- **Version Code:** `2`
 - **Target SDK:** Android 34 / 35 (Latest Android standard)
 - **Primary Asset File:** `app-release.aab`
